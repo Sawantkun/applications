@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: applications-shopify
+    env: docker
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm run docker-start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SHOPIFY_API_KEY
+        value: 5a9b344563aae1d4c0f19723aaffc9d1
+      - key: SHOPIFY_API_SECRET
+        sync: false # User will need to enter this in dashboard
+      - key: SCOPES
+        value: write_products
+      - key: HOST
+        sync: false # Will be auto-filled or user needs to enter
+      - key: DATABASE_URL
+        value: file:/data/sqlite.db
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
