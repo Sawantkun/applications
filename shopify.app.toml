@@ -2,12 +2,11 @@
 
 client_id = "5a9b344563aae1d4c0f19723aaffc9d1"
 name = "applications"
-application_url = "https://applications-eta.vercel.app"
+application_url = "https://applications-shopify.onrender.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2026-01"
@@ -25,4 +24,4 @@ api_version = "2026-01"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://applications-eta.vercel.app/api/auth" ]
+redirect_urls = [ "https://applications-shopify.onrender.com/api/auth" ]
