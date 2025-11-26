@@ -6,8 +6,15 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
 
+  const apiKey = process.env.SHOPIFY_API_KEY;
+  console.log("Loader: SHOPIFY_API_KEY present?", Boolean(apiKey));
+
+  if (!apiKey) {
+    console.error("Loader: SHOPIFY_API_KEY is missing!");
+  }
+
   // eslint-disable-next-line no-undef
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  return { apiKey: apiKey || "" };
 };
 
 export default function App() {
