@@ -17,16 +17,22 @@ export const loader = async ({ request }) => {
   return { apiKey: apiKey || "" };
 };
 
+import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
+import "@shopify/polaris/build/esm/styles.css";
+import translations from "@shopify/polaris/locales/en.json";
+
 export default function App() {
   const { apiKey } = useLoaderData();
 
   return (
     <AppProvider embedded apiKey={apiKey}>
-      <s-app-nav>
-        <s-link href="/app">Home</s-link>
-        <s-link href="/app/additional">Additional page</s-link>
-      </s-app-nav>
-      <Outlet />
+      <PolarisAppProvider i18n={translations}>
+        <s-app-nav>
+          <s-link href="/app">Home</s-link>
+          <s-link href="/app/additional">Additional page</s-link>
+        </s-app-nav>
+        <Outlet />
+      </PolarisAppProvider>
     </AppProvider>
   );
 }

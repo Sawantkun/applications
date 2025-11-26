@@ -2,6 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import QRCode from "qrcode";
+import {
+  Page,
+  Layout,
+  Card,
+  BlockStack,
+  InlineStack,
+  Text,
+  DataTable,
+  Thumbnail,
+} from "@shopify/polaris";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -18,6 +28,27 @@ export default function Index() {
   const [qrData, setQrData] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+
+  // Store Products State
+  const [storeProducts, setStoreProducts] = useState([]);
+
+  useEffect(() => {
+    async function loadRealProducts() {
+      const res = await fetch("/api/shopify-products");
+      const data = await res.json();
+      // Ensure data is an array before setting it
+      if (Array.isArray(data)) {
+        setStoreProducts(data);
+      } else if (data.products && Array.isArray(data.products)) {
+        // Handle case where API returns { products: [...] }
+        setStoreProducts(data.products);
+      } else {
+        console.error("Unexpected API response:", data);
+        setStoreProducts([]);
+      }
+    }
+    loadRealProducts();
+  }, []);
 
   const qrDescription = useMemo(() => {
     try {
@@ -71,12 +102,14 @@ export default function Index() {
   };
 
   return (
-    <s-page heading="BlackBytt QR generator">
-      <s-layout>
-        <s-layout-section>
-          <s-card rounded="large">
-            <s-stack direction="block" gap="base">
-              <s-heading level="3">Customize your QR code</s-heading>
+    <Page title="BlackBytt QR generator">
+      <Layout>
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text as="h3" variant="headingMd">
+                Customize your QR code
+              </Text>
               <s-text-field
                 label="Target URL or text"
                 value={payload}
@@ -90,7 +123,7 @@ export default function Index() {
                 onInput={(event) => setLabel(event.target.value)}
                 autoComplete="off"
               />
-              <s-stack direction="inline" gap="base">
+              <InlineStack gap="400">
                 <s-text-field
                   label="Size (px)"
                   type="number"
@@ -111,7 +144,7 @@ export default function Index() {
                   value={background}
                   onInput={(event) => setBackground(event.target.value)}
                 />
-              </s-stack>
+              </InlineStack>
               {error && (
                 <s-banner status="critical" title="Generation issue">
                   {error}
@@ -120,13 +153,15 @@ export default function Index() {
               <s-button onClick={generateQRCode} loading={isGenerating}>
                 Generate QR
               </s-button>
-            </s-stack>
-          </s-card>
-        </s-layout-section>
-        <s-layout-section secondary>
-          <s-card rounded="large">
-            <s-stack direction="block" gap="base" alignment="center">
-              <s-heading level="3">Preview</s-heading>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+        <Layout.Section variant="oneThird">
+          <Card>
+            <BlockStack gap="400" align="center">
+              <Text as="h3" variant="headingMd">
+                Preview
+              </Text>
               {qrData ? (
                 <img
                   src={qrData}
@@ -136,10 +171,10 @@ export default function Index() {
                   style={{ borderRadius: "16px", background }}
                 />
               ) : (
-                <s-text>Provide details to generate your QR code.</s-text>
+                <Text>Provide details to generate your QR code.</Text>
               )}
-              {label && <s-text>{label}</s-text>}
-              <s-stack direction="inline" gap="base">
+              {label && <Text>{label}</Text>}
+              <InlineStack gap="400">
                 <s-button
                   onClick={downloadImage}
                   variant="primary"
@@ -154,12 +189,46 @@ export default function Index() {
                 >
                   Copy data URL
                 </s-button>
-              </s-stack>
-            </s-stack>
-          </s-card>
-        </s-layout-section>
-      </s-layout>
-    </s-page>
+              </InlineStack>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text as="h2" variant="headingMd">
+                Store Products
+              </Text>
+              {storeProducts.length === 0 ? (
+                <Text color="subdued">(Products from Shopify will appear here)</Text>
+              ) : (
+                <DataTable
+                  columnContentTypes={["text", "text", "numeric", "text"]}
+                  headings={["Image", "Title", "Price", "Status"]}
+                  rows={storeProducts.map((product) => [
+                    product.image ? (
+                      <Thumbnail
+                        source={product.image.src}
+                        alt={product.title}
+                        size="small"
+                      />
+                    ) : (
+                      ""
+                    ),
+                    product.title,
+                    product.variants && product.variants[0]
+                      ? `$${product.variants[0].price}`
+                      : "-",
+                    product.status,
+                  ])}
+                />
+              )}
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+      </Layout>
+    </Page>
   );
 }
 
