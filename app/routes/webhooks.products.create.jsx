@@ -31,10 +31,20 @@ export const action = async ({ request }) => {
   });
 
   // Authenticate and parse the webhook (this will also validate HMAC)
-  const { payload, topic, shop } = await authenticate.webhook(forwardedRequest);
-
-  console.log(`Received ${topic} webhook for ${shop}`);
-  console.log("Authenticated payload:", payload);
+  let payload, topic, shop;
+  try {
+    const auth = await authenticate.webhook(forwardedRequest);
+    payload = auth.payload;
+    topic = auth.topic;
+    shop = auth.shop;
+    console.log("authenticate.webhook succeeded", { topic, shop });
+    console.log("Authenticated payload:", payload);
+  } catch (err) {
+    // Log the authentication error for debugging (visible in server logs).
+    console.error("authenticate.webhook failed:", err);
+    // Return a clear response so you can see the failure during testing/recording.
+    return new Response("Webhook auth failed", { status: 401 });
+  }
 
   // Only handle products/create here
   if (topic && topic !== "products/create") {
