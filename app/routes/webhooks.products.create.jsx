@@ -54,6 +54,7 @@ export const action = async ({ request }) => {
     }
 
     console.log(`Received ${topic} webhook for ${shop}`);
+    console.log("authenticate.webhook succeeded", { topic, shop });
     console.log("Authenticated payload:", payload);
 
     if (topic && topic !== "products/create") {
@@ -63,14 +64,22 @@ export const action = async ({ request }) => {
 
     const product = payload ?? data;
 
-    try {
-      broadcast("product_created", product, shop);
-      console.log("Broadcasted product_created event to SSE clients", { shop });
-    } catch (err) {
-      console.error("Failed to broadcast product_created event:", err);
-    }
+    // Respond immediately to Shopify to avoid timeouts; perform broadcast asynchronously.
+    const response = new Response("Webhook processed", { status: 200 });
 
-    return new Response("Webhook processed", { status: 200 });
+    // Fire-and-forget broadcast so the HTTP response isn't delayed by SSE work.
+    setTimeout(() => {
+      try {
+        broadcast("product_created", product, shop);
+        console.log("Broadcasted product_created event to SSE clients", {
+          shop,
+        });
+      } catch (err) {
+        console.error("Failed to broadcast product_created event:", err);
+      }
+    }, 0);
+
+    return response;
   } catch (err) {
     // Top-level catch to capture unexpected failures and log full details for debugging 500s
     try {
