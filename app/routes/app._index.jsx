@@ -321,7 +321,7 @@ export default function Index() {
     // The /sse.subscribe route returns an SSE stream authenticated for admin sessions.
     let es;
     try {
-      es = new EventSource("/sse.subscribe");
+      es = new EventSource("/sse/subscribe");
 
       // Handle product_created events and append to local state
       es.addEventListener("product_created", (e) => {
