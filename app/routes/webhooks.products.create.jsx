@@ -32,9 +32,16 @@ export const action = async ({ request }) => {
     }
     console.log("Parsed data:", data);
 
+    // Properly clone headers for the forwarded request
+    // This is critical for HMAC signature verification
+    const headers = new Headers();
+    for (const [key, value] of request.headers.entries()) {
+      headers.set(key, value);
+    }
+
     const forwardedRequest = new Request(request.url, {
       method: request.method,
-      headers: request.headers,
+      headers: headers,
       body: rawBody,
     });
 
@@ -49,6 +56,8 @@ export const action = async ({ request }) => {
     } catch (err) {
       // Log the authentication error for debugging (visible in server logs).
       console.error("authenticate.webhook failed:", err);
+      console.error("Error message:", err?.message);
+      console.error("Error stack:", err?.stack);
       // Return a clear response so you can see the failure during testing/recording.
       return new Response("Webhook auth failed", { status: 401 });
     }
