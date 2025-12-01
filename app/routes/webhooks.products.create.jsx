@@ -37,9 +37,11 @@ export const action = async ({ request }) => {
     console.log(`Received ${topic} webhook for ${shop}`);
     console.log("Parsed webhook payload:", payload);
 
-    if (topic !== "products/create") {
+    const normalizedTopic = topic?.toLowerCase();
+
+    if (normalizedTopic !== "products/create") {
       console.log(`Ignoring webhook topic ${topic} in products.create route`);
-      return new Response("Ignored", { status: 204 });
+      return new Response(null, { status: 204 });
     }
 
     const product = payload ?? data;
