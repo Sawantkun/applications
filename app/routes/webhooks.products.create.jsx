@@ -11,7 +11,19 @@ import { broadcast } from "../sse.server";
  */
 export const action = async ({ request }) => {
   try {
+    // Validate request method
+    if (request.method !== "POST") {
+      console.error("Invalid request method:", request.method);
+      return new Response("Method not allowed", { status: 405 });
+    }
+
     const rawBody = await request.text();
+    
+    if (!rawBody || rawBody.length === 0) {
+      console.error("Empty webhook body received");
+      return new Response("Empty body", { status: 400 });
+    }
+    
     console.log("Received raw webhook body:", rawBody);
 
     // Log headers early so we can inspect them when debugging 500s
@@ -62,16 +74,26 @@ export const action = async ({ request }) => {
       return new Response("Webhook auth failed", { status: 401 });
     }
 
+    if (!topic || !shop) {
+      console.error("Missing topic or shop after authentication", { topic, shop });
+      return new Response("Invalid webhook data", { status: 400 });
+    }
+
     console.log(`Received ${topic} webhook for ${shop}`);
     console.log("authenticate.webhook succeeded", { topic, shop });
     console.log("Authenticated payload:", payload);
 
-    if (topic && topic !== "products/create") {
+    if (topic !== "products/create") {
       console.log(`Ignoring webhook topic ${topic} in products.create route`);
       return new Response("Ignored", { status: 204 });
     }
 
     const product = payload ?? data;
+    
+    if (!product) {
+      console.error("No product data in webhook payload");
+      return new Response("Missing product data", { status: 400 });
+    }
 
     // Respond immediately to Shopify to avoid timeouts; perform broadcast asynchronously.
     const response = new Response("Webhook processed", { status: 200 });
@@ -91,18 +113,32 @@ export const action = async ({ request }) => {
     return response;
   } catch (err) {
     // Top-level catch to capture unexpected failures and log full details for debugging 500s
+    console.error(
+      "Unhandled error in products.create webhook handler:",
+      err && err.stack ? err.stack : err,
+    );
+    console.error("Error name:", err?.name);
+    console.error("Error message:", err?.message);
+    
+    // Try to log headers, but don't fail if we can't
     try {
-      console.error(
-        "Unhandled error in products.create webhook handler:",
-        err && err.stack ? err.stack : err,
-      );
-      console.error(
-        "Request headers at failure:",
-        Object.fromEntries(request.headers.entries()),
-      );
+      const headersObj = Object.fromEntries(request.headers.entries());
+      console.error("Request headers at failure:", headersObj);
+      console.error("Request URL:", request.url);
+      console.error("Request method:", request.method);
     } catch (logErr) {
-      console.error("Failed while logging error details:", logErr);
+      console.error("Failed while logging request details:", logErr);
     }
-    return new Response("Internal Server Error", { status: 500 });
+    
+    return new Response(
+      JSON.stringify({ 
+        error: "Internal Server Error",
+        message: err?.message || "Unknown error"
+      }),
+      { 
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
   }
 };
