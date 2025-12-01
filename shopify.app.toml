@@ -12,20 +12,24 @@ automatically_update_urls_on_dev = true
 api_version = "2025-01"
 
 [[webhooks.subscriptions]]
-topic = "products/update"
+topics = ["products/update"]
 path = "/webhooks/products/update"
+uri = "https://applications-shopify.onrender.com/webhooks/products/update"
 
 [[webhooks.subscriptions]]
-topic = "products/create"
+topics = ["products/create"]
 path = "/webhooks/products/create"
+uri = "https://applications-shopify.onrender.com/webhooks/products/create"
 
 [[webhooks.subscriptions]]
-topic = "app/scopes_update"
+topics = ["app/scopes_update"]
 path = "/webhooks/app/scopes_update"
+uri = "https://applications-shopify.onrender.com/webhooks/app/scopes_update"
 
 [[webhooks.subscriptions]]
-topic = "app/uninstalled"
+topics = ["app/uninstalled"]
 path = "/webhooks/app/uninstalled"
+uri = "https://applications-shopify.onrender.com/webhooks/app/uninstalled"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
