@@ -25,6 +25,8 @@ const shopify = shopifyApp({
 });
 
 export default shopify;
+export const shopifyAppInstance = shopify;
+export const shopifyApp = shopify; // backwards compatibility with video script wording
 export const apiVersion = ApiVersion.October24;
 export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
 export const authenticate = shopify.authenticate;
