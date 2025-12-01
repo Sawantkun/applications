@@ -27,10 +27,9 @@ export default function App() {
   return (
     <AppProvider embedded apiKey={apiKey}>
       <PolarisAppProvider i18n={translations}>
-        <s-app-nav aria-label="BlackBytt Labels navigation">
-          <s-link href="/app/labels">Labels</s-link>
-          <s-link href="/app/preferences">Preferences</s-link>
-          <s-link href="/app/pricing-plans">Pricing plans</s-link>
+        <s-app-nav>
+          <s-link href="/app">Home</s-link>
+          <s-link href="/app/additional">Additional page</s-link>
         </s-app-nav>
         <Outlet />
       </PolarisAppProvider>
