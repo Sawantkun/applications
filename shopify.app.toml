@@ -17,6 +17,11 @@ path = "/webhooks/products/update"
 uri = "https://applications-shopify.onrender.com/webhooks/products/update"
 
 [[webhooks.subscriptions]]
+topics = ["products/delete"]
+path = "/webhooks/products/delete"
+uri = "https://applications-shopify.onrender.com/webhooks/products/delete"
+
+[[webhooks.subscriptions]]
 topics = ["products/create"]
 path = "/webhooks/products/create"
 uri = "https://applications-shopify.onrender.com/webhooks/products/create"
