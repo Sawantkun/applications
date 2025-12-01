@@ -1,9 +1,29 @@
+import crypto from "crypto";
 import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
     const rawBody = await request.text();
     console.log("Received raw webhook body:", rawBody);
+
+    // --- Section 1 & 2: Access headers and extract the Shopify HMAC header ---
+    // This is the exact header Shopify sends for webhook verification.
+    const hmacHeader = request.headers.get("X-Shopify-Hmac-Sha256");
+    console.log("Shopify HMAC header:", hmacHeader);
+
+    // --- Section 3: Generate our own HMAC from the raw body and shared secret ---
+    const generatedHash = crypto
+      .createHmac("sha256", process.env.SHOPIFY_API_SECRET || "")
+      .update(rawBody, "utf8")
+      .digest("base64");
+
+    console.log("Generated HMAC from rawBody:", generatedHash);
+
+    // Compare the two hashes. If they don't match, reject the webhook.
+    if (!hmacHeader || generatedHash !== hmacHeader) {
+      console.warn("Invalid HMAC signature for webhook request.");
+      return new Response("Invalid", { status: 401 });
+    }
 
     let data;
     try {
@@ -30,6 +50,7 @@ export const action = async ({ request }) => {
       return new Response(null, { status: 204 });
     }
 
+    // --- Section 4: If verification passes, accept the webhook with a 200 ---
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
     console.error(
