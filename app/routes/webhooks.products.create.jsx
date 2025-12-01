@@ -11,31 +11,11 @@ import { broadcast } from "../sse.server";
  */
 export const action = async ({ request }) => {
   try {
-    // Validate request method
-    if (request.method !== "POST") {
-      console.error("Invalid request method:", request.method);
-      return new Response("Method not allowed", { status: 405 });
-    }
-
+    // Read the raw POST body so we can log exactly what Shopify sent.
     const rawBody = await request.text();
-    
-    if (!rawBody || rawBody.length === 0) {
-      console.error("Empty webhook body received");
-      return new Response("Empty body", { status: 400 });
-    }
-    
     console.log("Received raw webhook body:", rawBody);
 
-    // Log headers early so we can inspect them when debugging 500s
-    try {
-      console.log(
-        "Request headers:",
-        Object.fromEntries(request.headers.entries()),
-      );
-    } catch (hdrErr) {
-      console.error("Failed to read request.headers for logging:", hdrErr);
-    }
-
+    // Convert the raw text body into JSON with safety try/catch
     let data;
     try {
       data = JSON.parse(rawBody);
@@ -44,44 +24,18 @@ export const action = async ({ request }) => {
     }
     console.log("Parsed data:", data);
 
-    // Properly clone headers for the forwarded request
-    // This is critical for HMAC signature verification
-    const headers = new Headers();
-    for (const [key, value] of request.headers.entries()) {
-      headers.set(key, value);
-    }
-
+    // Forward a new Request containing the raw body to the authenticator
+    // so it can verify signatures without the original stream being consumed.
     const forwardedRequest = new Request(request.url, {
       method: request.method,
-      headers: headers,
+      headers: request.headers,
       body: rawBody,
     });
 
-    let payload, topic, shop;
-    try {
-      const auth = await authenticate.webhook(forwardedRequest);
-      payload = auth.payload;
-      topic = auth.topic;
-      shop = auth.shop;
-      console.log("authenticate.webhook succeeded", { topic, shop });
-      console.log("Authenticated payload:", payload);
-    } catch (err) {
-      // Log the authentication error for debugging (visible in server logs).
-      console.error("authenticate.webhook failed:", err);
-      console.error("Error message:", err?.message);
-      console.error("Error stack:", err?.stack);
-      // Return a clear response so you can see the failure during testing/recording.
-      return new Response("Webhook auth failed", { status: 401 });
-    }
-
-    if (!topic || !shop) {
-      console.error("Missing topic or shop after authentication", { topic, shop });
-      return new Response("Invalid webhook data", { status: 400 });
-    }
+    const { payload, topic, shop } = await authenticate.webhook(forwardedRequest);
 
     console.log(`Received ${topic} webhook for ${shop}`);
-    console.log("authenticate.webhook succeeded", { topic, shop });
-    console.log("Authenticated payload:", payload);
+    console.log("Parsed webhook payload:", payload);
 
     if (topic !== "products/create") {
       console.log(`Ignoring webhook topic ${topic} in products.create route`);
@@ -89,17 +43,10 @@ export const action = async ({ request }) => {
     }
 
     const product = payload ?? data;
-    
-    if (!product) {
-      console.error("No product data in webhook payload");
-      return new Response("Missing product data", { status: 400 });
-    }
 
-    // Respond immediately to Shopify to avoid timeouts; perform broadcast asynchronously.
-    const response = new Response("Webhook processed", { status: 200 });
-
-    // Fire-and-forget broadcast so the HTTP response isn't delayed by SSE work.
-    setTimeout(() => {
+    // Broadcast SSE event asynchronously, but don't let it block the response
+    // Use Promise.resolve().then() instead of setTimeout for better async handling
+    Promise.resolve().then(() => {
       try {
         broadcast("product_created", product, shop);
         console.log("Broadcasted product_created event to SSE clients", {
@@ -108,9 +55,12 @@ export const action = async ({ request }) => {
       } catch (err) {
         console.error("Failed to broadcast product_created event:", err);
       }
-    }, 0);
+    }).catch((broadcastErr) => {
+      console.error("Error in broadcast promise:", broadcastErr);
+    });
 
-    return response;
+    // Respond immediately to Shopify to avoid timeouts
+    return new Response("Webhook processed", { status: 200 });
   } catch (err) {
     // Top-level catch to capture unexpected failures and log full details for debugging 500s
     console.error(
