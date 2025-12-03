@@ -7,5 +7,56 @@
 {% endschema %}
 
 <script>
-  console.log("Black Bytt Labels App Embed Loaded");
+  // Black Bytt Labels App Embed Loaded
+
+  // Function to fetch label for a product
+  async function fetchLabel(productId) {
+    try {
+      // Adjust this endpoint to match your backend route for fetching labels
+      const res = await fetch(`/apps/blackbytt-labels/labels?product_id=${productId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.label || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Main logic to inject labels
+  async function injectLabels() {
+    // Check if embed is enabled (you may want to use a global variable or theme setting)
+    // For demo, always enabled when embed is active
+    var products = document.querySelectorAll('[data-product-id]');
+    for (const productEl of products) {
+      const productId = productEl.getAttribute('data-product-id');
+      if (!productId) continue;
+      // Prevent duplicate labels
+      if (productEl.querySelector('.blackbytt-label')) continue;
+      const label = await fetchLabel(productId);
+      if (label) {
+        const labelEl = document.createElement('div');
+        labelEl.className = 'blackbytt-label';
+        labelEl.style.background = '#000';
+        labelEl.style.color = '#fff';
+        labelEl.style.padding = '4px 8px';
+        labelEl.style.borderRadius = '4px';
+        labelEl.style.fontWeight = 'bold';
+        labelEl.style.display = 'inline-block';
+        labelEl.style.marginBottom = '8px';
+        labelEl.innerText = label;
+        productEl.prepend(labelEl);
+      }
+    }
+  }
+
+  // Run on DOMContentLoaded and after AJAX navigation (if using Shopify's PJAX)
+  document.addEventListener('DOMContentLoaded', injectLabels);
+  document.addEventListener('shopify:section:load', injectLabels);
+  document.addEventListener('shopify:section:select', injectLabels);
+  document.addEventListener('shopify:section:deselect', injectLabels);
+  document.addEventListener('shopify:filter:apply', injectLabels);
+
+  // Optionally, observe DOM changes for dynamic product loading
+  const observer = new MutationObserver(injectLabels);
+  observer.observe(document.body, { childList: true, subtree: true });
 </script>
