@@ -19,7 +19,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const loader = async ({ request }) => {
-    const { session } = await authenticate.admin(request);
+    const { admin, session } = await authenticate.admin(request);
 
     // Fetch all labels for this shop
     const labels = await prisma.label.findMany({
@@ -27,7 +27,56 @@ export const loader = async ({ request }) => {
         orderBy: { createdAt: 'desc' }
     });
 
-    return { labels, shop: session.shop };
+    // Extract product IDs
+    const productIds = labels
+        .map(l => l.selectedProductId)
+        .filter(id => id); // Filter out nulls
+
+    let productsMap = {};
+
+    if (productIds.length > 0) {
+        // Fetch product details from Shopify
+        // Note: For many products, we might need pagination or multiple queries.
+        // For simplicity, we'll fetch individually or use a query with multiple IDs if possible.
+        // GraphQL nodes query is best for fetching multiple IDs.
+
+        try {
+            const response = await admin.graphql(
+                `#graphql
+                query getProducts($ids: [ID!]!) {
+                    nodes(ids: $ids) {
+                        ... on Product {
+                            id
+                            title
+                            featuredImage {
+                                url
+                            }
+                        }
+                    }
+                }`,
+                { variables: { ids: productIds } }
+            );
+
+            const responseJson = await response.json();
+            const products = responseJson.data.nodes;
+
+            products.forEach(product => {
+                if (product) {
+                    productsMap[product.id] = product;
+                }
+            });
+        } catch (error) {
+            console.error("Error fetching products:", error);
+        }
+    }
+
+    // Attach product details to labels
+    const labelsWithProducts = labels.map(label => ({
+        ...label,
+        product: productsMap[label.selectedProductId] || null
+    }));
+
+    return { labels: labelsWithProducts, shop: session.shop };
 };
 
 export const action = async ({ request }) => {
@@ -283,16 +332,17 @@ export default function ManageLabels() {
                                                         borderRadius: "8px",
                                                         display: "flex",
                                                         alignItems: "center",
-                                                        justifyContent: "center"
+                                                        justifyContent: "center",
+                                                        overflow: "hidden"
                                                     }}>
-                                                        {label.labelType === "TEXT" ? (
-                                                            <span style={{ fontSize: "10px", color: "#666" }}>Product</span>
-                                                        ) : (
+                                                        {label.product?.featuredImage?.url ? (
                                                             <img
-                                                                src={label.labelContent}
-                                                                alt="Product"
-                                                                style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: "8px" }}
+                                                                src={label.product.featuredImage.url}
+                                                                alt={label.product.title}
+                                                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                                             />
+                                                        ) : (
+                                                            <span style={{ fontSize: "10px", color: "#666" }}>Product</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -307,7 +357,8 @@ export default function ManageLabels() {
                                                         borderRadius: "6px",
                                                         display: "flex",
                                                         alignItems: "center",
-                                                        justifyContent: "center"
+                                                        justifyContent: "center",
+                                                        overflow: "hidden"
                                                     }}>
                                                         {label.labelType === "TEXT" ? (
                                                             <span style={{
