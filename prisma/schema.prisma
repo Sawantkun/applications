@@ -30,3 +30,22 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Label {
+  id                    String    @id @default(uuid())
+  shop                  String
+  labelType             String    // 'IMAGE', 'TEXT', 'SVG'
+  labelContent          String    // Base64 encoded image/SVG or plain text
+  position              String    @default("TOP_LEFT") // Position on product card
+  isActive              Boolean   @default(true)
+  hoverEffect           Boolean   @default(false)
+  showOnProductPages    Boolean   @default(true)
+  showOnCollectionPages Boolean   @default(false)
+  showOnSearchPages     Boolean   @default(false)
+  showOnHomePage        Boolean   @default(false)
+  showOnCartPage        Boolean   @default(false)
+  showOnOtherPages      Boolean   @default(false)
+  selectedProductId     String?   // Optional: specific product to preview
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}

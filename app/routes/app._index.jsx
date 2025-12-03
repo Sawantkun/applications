@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import QRCode from "qrcode";
 import {
   Page,
   Layout,
@@ -9,390 +7,166 @@ import {
   BlockStack,
   InlineStack,
   Text,
-  DataTable,
-  Thumbnail,
-  Tabs,
   Button,
-  Banner,
+  Badge,
 } from "@shopify/polaris";
+import { Link } from "react-router";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+
+  // Get the shop domain for theme customizer URL
+  return { shop: session.shop };
 };
 
-function DashboardSection({ products }) {
-  // QR Code Logic (Moved here)
-  const [payload, setPayload] = useState("https://blackbytt.com");
-  const [label, setLabel] = useState("Scan to explore BlackBytt");
-  const [size, setSize] = useState(280);
-  const [foreground, setForeground] = useState("#0b0d17");
-  const [background, setBackground] = useState("#ffffff");
-  const [qrData, setQrData] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState("");
+const steps = [
+  {
+    title: "Step 1: Integrate our app.",
+    description:
+      "To enter the Theme Editor page, click the \"Enabled app embed\" button below, then activate our app and click \"Save\".",
+    actionLabel: "Enable Label",
+    actionUrl: "shopify://admin/themes/current/editor",
+    isExternal: true,
+    image: "/assets/step1-placeholder.svg",
+  },
+  {
+    title: "Step 2: Create your label.",
+    description:
+      "To begin the procedure, click the \"Labels\" tab, then \"Create Labels,\" then personalize the label to meet your needs.",
+    actionLabel: "Create Label",
+    actionUrl: "/app/preferences",
+    isExternal: false,
+    image: "/assets/step2-placeholder.svg",
+  },
+  {
+    title: "Step 3: Publish your label.",
+    description:
+      "After you’ve finished designing the label, save and activate it so it appears on your shop. Reach out if it doesn’t show.",
+    actionLabel: "Manage label",
+    actionUrl: "/app/labels",
+    isExternal: false,
+    image: "/assets/step3-placeholder.svg",
+  },
+];
 
-  const qrDescription = useMemo(() => {
-    try {
-      const url = new URL(payload || "https://blackbytt.com");
-      return `QR for ${url.hostname}`;
-    } catch {
-      return "QR preview";
+function StepCard({ title, description, actionLabel, actionUrl, isExternal, image }) {
+  const handleClick = () => {
+    if (isExternal) {
+      window.open(actionUrl, '_blank');
     }
-  }, [payload]);
-
-  const generateQRCode = useCallback(async () => {
-    if (!payload) {
-      setError("Enter a URL or text to encode.");
-      return;
-    }
-    setIsGenerating(true);
-    setError("");
-    try {
-      const dataUrl = await QRCode.toDataURL(payload, {
-        margin: 1,
-        width: Number(size),
-        color: { dark: foreground, light: background },
-      });
-      setQrData(dataUrl);
-    } catch (err) {
-      setError("We couldn’t generate that QR code. Try different settings.");
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [background, foreground, payload, size]);
-
-  useEffect(() => {
-    generateQRCode();
-  }, [generateQRCode]);
-
-  const downloadImage = () => {
-    if (!qrData) return;
-    const link = document.createElement("a");
-    link.href = qrData;
-    link.download = `blackbytt-qr-${Date.now()}.png`;
-    link.click();
-  };
-
-  const copyImage = async () => {
-    if (!qrData || !navigator.clipboard?.writeText) return;
-    await navigator.clipboard.writeText(qrData);
   };
 
   return (
-    <BlockStack gap="500">
-      <Layout>
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text as="h2" variant="headingMd">
-                Overview
-              </Text>
-              <InlineStack gap="400" wrap={false}>
-                <Card>
-                  <BlockStack gap="200">
-                    <Text variant="headingSm">Total Products</Text>
-                    <Text variant="headingXl">{products.length}</Text>
-                  </BlockStack>
-                </Card>
-                <Card>
-                  <BlockStack gap="200">
-                    <Text variant="headingSm">Total Revenue</Text>
-                    <Text variant="headingXl">$12,450</Text>
-                  </BlockStack>
-                </Card>
-                <Card>
-                  <BlockStack gap="200">
-                    <Text variant="headingSm">Active Orders</Text>
-                    <Text variant="headingXl">8</Text>
-                  </BlockStack>
-                </Card>
-              </InlineStack>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text as="h3" variant="headingMd">
-                Customize your QR code
-              </Text>
-              <s-text-field
-                label="Target URL or text"
-                value={payload}
-                onInput={(event) => setPayload(event.target.value)}
-                helpText="Paste any product page, discount, or flow URL."
-                autoComplete="off"
-              />
-              <s-text-field
-                label="Label (optional)"
-                value={label}
-                onInput={(event) => setLabel(event.target.value)}
-                autoComplete="off"
-              />
-              <InlineStack gap="400">
-                <s-text-field
-                  label="Size (px)"
-                  type="number"
-                  min="140"
-                  max="520"
-                  value={size}
-                  onInput={(event) => setSize(event.target.value)}
-                />
-                <s-text-field
-                  label="Foreground"
-                  type="color"
-                  value={foreground}
-                  onInput={(event) => setForeground(event.target.value)}
-                />
-                <s-text-field
-                  label="Background"
-                  type="color"
-                  value={background}
-                  onInput={(event) => setBackground(event.target.value)}
-                />
-              </InlineStack>
-              {error && (
-                <Banner status="critical" title="Generation issue">
-                  {error}
-                </Banner>
-              )}
-              <Button onClick={generateQRCode} loading={isGenerating}>
-                Generate QR
-              </Button>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-        <Layout.Section variant="oneThird">
-          <Card>
-            <BlockStack gap="400" align="center">
-              <Text as="h3" variant="headingMd">
-                Preview
-              </Text>
-              {qrData ? (
-                <img
-                  src={qrData}
-                  width={size}
-                  height={size}
-                  alt={qrDescription}
-                  style={{ borderRadius: "16px", background }}
-                />
-              ) : (
-                <Text>Provide details to generate your QR code.</Text>
-              )}
-              {label && <Text>{label}</Text>}
-              <InlineStack gap="400">
-                <Button
-                  onClick={downloadImage}
-                  variant="primary"
-                  disabled={!qrData}
-                >
-                  Download PNG
-                </Button>
-                <Button
-                  onClick={copyImage}
-                  variant="secondary"
-                  disabled={!qrData}
-                >
-                  Copy data URL
-                </Button>
-              </InlineStack>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-      </Layout>
-    </BlockStack>
-  );
-}
-
-function ProductsSection({ products, setProducts }) {
-  const addMockProduct = () => {
-    const newProduct = {
-      id: `gid://shopify/Product/mock-${Date.now()}`,
-      title: "New Mock Product",
-      status: "DRAFT",
-      variants: [{ price: "19.99" }],
-      image: null,
-    };
-    setProducts([...products, newProduct]);
-  };
-
-  return (
-    <Layout>
-      <Layout.Section>
-        <Card>
-          <BlockStack gap="400">
-            <InlineStack align="space-between">
-              <Text as="h2" variant="headingMd">
-                Store Products
-              </Text>
-              <Button onClick={addMockProduct}>Add Mock Product</Button>
-            </InlineStack>
-            {products.length === 0 ? (
-              <Text color="subdued">
-                (Products from Shopify will appear here)
-              </Text>
+    <div style={{ flex: "1 1 280px", minWidth: 280, }}>
+      <Card padding="0">
+        <div style={{ scale: "1.05", background: "#f1f2f4", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <img src={image} alt={title} style={{ objectFit: "cover" }} />
+        </div>
+        <div style={{ padding: "1rem" }}>
+          <BlockStack gap="300">
+            <Text variant="headingMd" as="h3">
+              {title}
+            </Text>
+            <Text tone="subdued">{description}</Text>
+            {isExternal ? (
+              <div>
+                <Button variant="primary" onClick={handleClick}>{actionLabel}</Button>
+              </div>
             ) : (
-              <DataTable
-                columnContentTypes={["text", "text", "numeric", "text"]}
-                headings={["Image", "Title", "Price", "Status"]}
-                rows={products.map((product) => [
-                  product.image ? (
-                    <Thumbnail
-                      source={product.image.src}
-                      alt={product.title}
-                      size="small"
-                    />
-                  ) : (
-                    ""
-                  ),
-                  product.title,
-                  product.variants && product.variants[0]
-                    ? `$${product.variants[0].price}`
-                    : "-",
-                  product.status,
-                ])}
-              />
+              <Link to={actionUrl} style={{ textDecoration: "none" }}>
+                <Button variant="primary">{actionLabel}</Button>
+              </Link>
             )}
           </BlockStack>
-        </Card>
-      </Layout.Section>
-    </Layout>
-  );
-}
-
-function AnalyticsSection({ products }) {
-  const totalValue = products.reduce((acc, p) => {
-    const price =
-      p.variants && p.variants[0] ? parseFloat(p.variants[0].price) : 0;
-    return acc + price;
-  }, 0);
-
-  const averagePrice =
-    products.length > 0 ? (totalValue / products.length).toFixed(2) : "0.00";
-
-  return (
-    <Layout>
-      <Layout.Section>
-        <Card>
-          <BlockStack gap="400">
-            <Text as="h2" variant="headingMd">
-              Analytics
-            </Text>
-            <InlineStack gap="400">
-              <Card>
-                <BlockStack gap="200">
-                  <Text variant="headingSm">Average Price</Text>
-                  <Text variant="headingXl">${averagePrice}</Text>
-                </BlockStack>
-              </Card>
-              <Card>
-                <BlockStack gap="200">
-                  <Text variant="headingSm">Product Count</Text>
-                  <Text variant="headingXl">{products.length}</Text>
-                </BlockStack>
-              </Card>
-            </InlineStack>
-          </BlockStack>
-        </Card>
-      </Layout.Section>
-    </Layout>
+        </div>
+      </Card>
+    </div>
   );
 }
 
 export default function Index() {
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [products, setProducts] = useState([]);
+  const handleContactClick = () => {
+    window.location.href = "mailto:theblacklabgroup@gmail.com?subject=BlackBytt Labels Support Request";
+  };
 
-  useEffect(() => {
-    async function loadRealProducts() {
-      const res = await fetch("/api/shopify-products");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProducts(data);
-      } else if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
-      }
-    }
-    loadRealProducts();
-
-    // Subscribe to server-sent events for live product updates (SSE)
-    // The /sse.subscribe route returns an SSE stream authenticated for admin sessions.
-    let es;
-    try {
-      es = new EventSource("/sse/subscribe");
-
-      // Handle product_created events and append to local state
-      es.addEventListener("product_created", (e) => {
-        try {
-          const product = JSON.parse(e.data);
-          const normalized = {
-            id: product.id,
-            title: product.title,
-            status: product.status || "ACTIVE",
-            variants: (product.variants || []).map((v) =>
-              // support either { price } or { node: { price } } shapes
-              v && v.price !== undefined
-                ? { price: v.price }
-                : v && v.node && v.node.price
-                  ? { price: v.node.price }
-                  : { price: "0.00" },
-            ),
-            image:
-              product.images && product.images.length > 0
-                ? { src: product.images[0].url }
-                : product.image || null,
-          };
-
-          setProducts((prev) => {
-            // avoid duplicate insertion by id
-            if (prev.some((p) => p.id === normalized.id)) return prev;
-            return [normalized, ...prev];
-          });
-
-          // Console logs are useful for the recorded demo
-          console.log("SSE: product_created", normalized);
-        } catch (err) {
-          console.error("Failed to parse SSE product_created event", err);
-        }
-      });
-
-      es.onerror = (err) => {
-        // Log SSE errors so they appear in the demo recording
-        console.error("SSE connection error", err);
-      };
-    } catch (err) {
-      console.error("Failed to create EventSource for SSE", err);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (es) {
-        try {
-          es.close();
-        } catch (e) {
-          // ignore
-        }
-      }
-    };
-  }, []);
-
-  const tabs = [
-    { id: "dashboard", content: "Dashboard" },
-    { id: "products", content: "Products" },
-    { id: "analytics", content: "Analytics" },
-  ];
+  const handleInstallationGuide = () => {
+    // You can create a separate route for installation guide or link to external documentation
+    window.open("https://help.shopify.com/en/manual/online-store/themes/theme-structure/extend/apps", "_blank");
+  };
 
   return (
-    <Page title="BlackBytt App">
-      <BlockStack gap="500">
-        <Tabs tabs={tabs} selected={selectedTab} onSelect={setSelectedTab} />
-        {selectedTab === 0 && <DashboardSection products={products} />}
-        {selectedTab === 1 && (
-          <ProductsSection products={products} setProducts={setProducts} />
-        )}
-        {selectedTab === 2 && <AnalyticsSection products={products} />}
+    <Page
+      title="Welcome To Blackbytt labels"
+      subtitle="Follow the guided steps below to activate beautifully branded badges in minutes."
+    >
+      <BlockStack gap="600">
+        <Card padding="600">
+          <BlockStack gap="400">
+            <Text as="h2" variant="headingLg">
+              Launch on-brand Shopify badges in three simple steps.
+            </Text>
+            <Text tone="subdued">
+              Use the checklist below to integrate, design, and publish without
+              leaving your admin.
+            </Text>
+            <InlineStack gap="400" wrap={true}>
+              {steps.map((step) => (
+                <StepCard key={step.title} {...step} />
+              ))}
+            </InlineStack>
+          </BlockStack>
+        </Card>
+
+        <Layout>
+          <Layout.Section>
+            <Card padding="500">
+              <InlineStack align="space-between" blockAlign="center">
+                <InlineStack gap="400" blockAlign="center">
+                  <img src="/assets/installation-guide-placeholder.svg" alt="Installation Guide" style={{ width: "60px", height: "60px", objectFit: "contain" }} />
+                  <BlockStack gap="200">
+                    <Text variant="headingMd">Installation Guide</Text>
+                    <Text tone="subdued">
+                      Easily install Shopify Badges and Labels. Check the guide for
+                      more details.
+                    </Text>
+                  </BlockStack>
+                </InlineStack>
+                <Button variant="secondary" onClick={handleInstallationGuide}>Read Installation Guide</Button>
+              </InlineStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
+
+        <Layout padding="600">
+          <Layout.Section variant="oneHalf">
+            <Card padding="500">
+              <BlockStack gap="400">
+                <InlineStack align="space-between">
+                  <BlockStack gap="200">
+                    <Text variant="headingMd">Support</Text>
+                    <Text tone="subdued">
+                      Connect with us anytime at theblacklabgroup@gmail.com.
+                    </Text>
+                  </BlockStack>
+                  <img src="/assets/support-placeholder.svg" alt="Support" style={{ width: "80px", height: "80px", objectFit: "contain" }} />
+                </InlineStack>
+                <Button variant="primary" onClick={handleContactClick}>Contact</Button>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+          <Layout.Section variant="oneHalf">
+            <Card padding="500">
+              <BlockStack gap="200">
+                <Text variant="headingMd">Need help publishing?</Text>
+                <Text tone="subdued">
+                  If your label does not appear on your theme, let us know and
+                  we will fix it for you.
+                </Text>
+                <Button onClick={handleContactClick}>Talk to support</Button>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
       </BlockStack>
     </Page>
   );
