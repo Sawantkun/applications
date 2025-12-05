@@ -1,126 +1,90 @@
 (function () {
-  // Autodetect base origin from this script tag so fetch() targets the app domain.
-  const currentScript = document.currentScript;
-  const baseOrigin = (currentScript && new URL(currentScript.src).origin) || "";
-
-  if (!baseOrigin) {
-    console.warn("BB: cannot detect script origin for label API calls.");
-  }
-
-  // CSS class name used for injected badges
+  const script = document.currentScript;
+  const baseOrigin = script ? new URL(script.src).origin : window.location.origin;
   const BADGE_CLASS = "bb-label";
+  const cache = new Map();
 
-  // Simple cache to avoid duplicate network requests
-  const labelCache = new Map();
+  function log(...args) { console.info("[BB]", ...args); }
+  function warn(...args) { console.warn("[BB]", ...args); }
 
-  function createBadge(text) {
-    const span = document.createElement("span");
-    span.className = BADGE_CLASS;
-    span.textContent = text || "";
-    return span;
-  }
-
-  function ensureStylesLoaded() {
-    // try to load CSS automatically if script tag has data-css attribute or side-by-side file exists
-    if (currentScript && currentScript.getAttribute("data-css") === "false") return;
-    const cssHref = baseOrigin + "/frontend/label-inject.css";
-    if (!document.querySelector(`link[href="${cssHref}"]`)) {
+  function ensureCss() {
+    const href = baseOrigin + "/frontend/label-inject.css";
+    if (!document.querySelector(`link[href="${href}"]`)) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = cssHref;
+      link.href = href;
       document.head.appendChild(link);
     }
   }
 
+  function createBadge(text) {
+    const s = document.createElement("span");
+    s.className = BADGE_CLASS;
+    s.textContent = text || "";
+    return s;
+  }
+
   function insertBadge(cardEl, text) {
     if (!cardEl || cardEl.querySelector(`.${BADGE_CLASS}`)) return;
-    // prefer an image or anchor inside card for positioning
-    const anchor = cardEl.querySelector("a") || cardEl;
-    // make container position relative if not set
+    const anchor = cardEl.querySelector("a, img, .product__image, .card__media") || cardEl;
     const computed = window.getComputedStyle(anchor);
-    if (computed.position === "static") {
-      anchor.style.position = "relative";
-    }
+    if (computed.position === "static") anchor.style.position = "relative";
     const badge = createBadge(text);
     anchor.appendChild(badge);
+    log("inserted badge", cardEl.getAttribute("data-product-id"), text);
   }
 
   function fetchLabel(productId) {
-    if (!baseOrigin) return Promise.resolve(null);
-    if (labelCache.has(productId)) return Promise.resolve(labelCache.get(productId));
+    if (!productId) return Promise.resolve(null);
+    if (cache.has(productId)) return Promise.resolve(cache.get(productId));
     const url = `${baseOrigin}/api/labels?productId=${encodeURIComponent(productId)}`;
+    log("fetching", url);
     return fetch(url, { credentials: "omit" })
-      .then((r) => {
-        if (!r.ok) throw new Error("bad response");
-        return r.json();
-      })
-      .then((json) => {
-        labelCache.set(productId, json);
-        return json;
-      })
-      .catch(() => {
-        labelCache.set(productId, null);
-        return null;
-      });
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(json => { cache.set(productId, json); return json; })
+      .catch(err => { warn("fetch failed", productId, err); cache.set(productId, null); return null; });
   }
 
-  function handleCard(cardEl) {
-    if (!cardEl) return;
-    if (cardEl.querySelector(`.${BADGE_CLASS}`)) return; // already handled
-    const productId = cardEl.getAttribute("data-product-id") || cardEl.dataset.productId;
-    if (!productId) return;
-    // If label text exists on the element itself (data-label) we prefer that
-    const dataLabel = cardEl.getAttribute("data-label") || cardEl.dataset.label;
-    if (dataLabel) {
-      insertBadge(cardEl, dataLabel);
-      return;
-    }
-    // Fetch from app
-    fetchLabel(productId).then((json) => {
-      if (!json || !json.enabled) return;
-      insertBadge(cardEl, json.label || "Label");
+  function handleCard(card) {
+    if (!card || card.querySelector(`.${BADGE_CLASS}`)) return;
+    const pid = card.getAttribute("data-product-id") || card.dataset.productId;
+    if (!pid) return;
+    const inline = card.getAttribute("data-label") || card.dataset.label;
+    if (inline) { insertBadge(card, inline); return; }
+    fetchLabel(pid).then(json => {
+      if (!json) return;
+      if (json.enabled) insertBadge(card, json.label || "Label");
     });
   }
 
-  function scanAndInject(root = document) {
+  function scan(root = document) {
     const nodes = root.querySelectorAll ? root.querySelectorAll("[data-product-id]") : [];
-    nodes.forEach((node) => {
-      // if query returned sub-element use closest product card
-      const card = node.matches && node.matches("[data-product-id]") ? node : node.closest("[data-product-id]");
-      handleCard(card);
+    nodes.forEach(n => {
+      const card = n.matches && n.matches("[data-product-id]") ? n : n.closest && n.closest("[data-product-id]");
+      if (card) handleCard(card);
     });
   }
 
-  function setupObserver() {
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.addedNodes && m.addedNodes.length) {
-          m.addedNodes.forEach((n) => {
-            if (!(n instanceof HTMLElement)) return;
-            if (n.matches && n.matches("[data-product-id]")) {
-              handleCard(n);
-            } else {
-              scanAndInject(n);
-            }
-          });
-        }
-      }
+  function observe() {
+    const obs = new MutationObserver(muts => {
+      muts.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.matches && node.matches("[data-product-id]")) handleCard(node);
+          else scan(node);
+        });
+      });
     });
-    observer.observe(document.documentElement || document.body, {
-      childList: true,
-      subtree: true,
-    });
+    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
   }
 
   function init() {
-    ensureStylesLoaded();
-    scanAndInject(document);
-    setupObserver();
+    ensureCss();
+    scan(document);
+    observe();
+    log("initialized baseOrigin=", baseOrigin);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

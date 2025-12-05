@@ -496,7 +496,7 @@ export default function PreferencesPage() {
                   {/* Save Button */}
                   <Button
                     variant="primary"
-                    tone="default"
+                    tone="success"
                     fullWidth
                     onClick={handleSave}
                   >
