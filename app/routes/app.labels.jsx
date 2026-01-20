@@ -19,11 +19,15 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const loader = async ({ request }) => {
+    // authenticate.admin() extracts the session from the request
+    // session contains: shop, accessToken, scope, isOnline, etc.
     const { admin, session } = await authenticate.admin(request);
 
-    // Fetch all labels for this shop
+    // Store Identity: Use session.shop to identify which store this request is for
+    // session.shop format: "store-name.myshopify.com"
+    // This ensures we only return labels for the authenticated store
     const labels = await prisma.label.findMany({
-        where: { shop: session.shop },
+        where: { shop: session.shop }, // Filter by store domain
         orderBy: { createdAt: 'desc' }
     });
 

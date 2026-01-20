@@ -19,7 +19,6 @@ export const loader = async ({ request }) => {
 
 import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
 import "@shopify/polaris/build/esm/styles.css";
-import "../styles/polaris-overrides.css";
 import translations from "@shopify/polaris/locales/en.json";
 
 export default function App() {
@@ -31,8 +30,8 @@ export default function App() {
         <s-app-nav>
           <s-link href="/app">Home</s-link>
           <s-link href="/app/labels">Labels</s-link>
-          <s-link href="/app/preferences">Preferences</s-link>
-          <s-link href="/app/pricing-plans">Pricing plans</s-link>
+          <s-link href="/app/pricing-plans">Pricing</s-link>
+          <s-link href="/app/additional">Additional page</s-link>
         </s-app-nav>
         <Outlet />
       </PolarisAppProvider>

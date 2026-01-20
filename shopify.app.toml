@@ -11,30 +11,25 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2025-01"
 
-[[webhooks.subscriptions]]
-topics = ["products/update"]
-path = "/webhooks/products/update"
-uri = "https://applications-shopify.onrender.com/webhooks/products/update"
+  [[webhooks.subscriptions]]
+  topics = [ "products/update" ]
+  uri = "/webhooks/products/update"
 
-[[webhooks.subscriptions]]
-topics = ["products/delete"]
-path = "/webhooks/products/delete"
-uri = "https://applications-shopify.onrender.com/webhooks/products/delete"
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete" ]
+  uri = "/webhooks/products/delete"
 
-[[webhooks.subscriptions]]
-topics = ["products/create"]
-path = "/webhooks/products/create"
-uri = "https://applications-shopify.onrender.com/webhooks/products/create"
+  [[webhooks.subscriptions]]
+  topics = [ "products/create" ]
+  uri = "/webhooks/products/create"
 
-[[webhooks.subscriptions]]
-topics = ["app/scopes_update"]
-path = "/webhooks/app/scopes_update"
-uri = "https://applications-shopify.onrender.com/webhooks/app/scopes_update"
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
 
-[[webhooks.subscriptions]]
-topics = ["app/uninstalled"]
-path = "/webhooks/app/uninstalled"
-uri = "https://applications-shopify.onrender.com/webhooks/app/uninstalled"
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes

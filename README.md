@@ -82,6 +82,29 @@ This template is configured with the Shopify Dev MCP. This instructs [Cursor](ht
 
 For more information on the Shopify Dev MCP please read [the  documentation](https://shopify.dev/docs/apps/build/devmcp).
 
+### Lecture Guide
+
+📚 **See [LECTURE_GUIDE.md](./LECTURE_GUIDE.md)** for a step-by-step guide on using Shopify Dev MCP for app development, including:
+- Setting up MCP in your AI editor
+- Generating GraphQL queries and mutations
+- Creating Checkout UI extension components
+- Understanding where MCP-generated code should be placed
+
+### Quick Setup
+
+1. **Start MCP Server:**
+   ```bash
+   npx -y @shopify/dev-mcp@latest
+   ```
+
+2. **Configure Your Editor:**
+   See [MCP_CONFIG_EXAMPLE.md](./MCP_CONFIG_EXAMPLE.md) for editor-specific configuration.
+
+3. **Generate Code:**
+   Ask your AI assistant to generate Shopify code (queries, mutations, extensions).
+
+**Important:** MCP is a development tool only - it is NOT deployed to production.
+
 ## Deployment
 
 ### Application Storage

@@ -1,0 +1,11 @@
+api_version = "2025-10"
+
+[[extensions]]
+uid = "7e7bb701-5da1-ab07-1a51-d4845ece7751c0267a80"
+type = "ui_extension"
+name = "recommended-issue-action"
+handle = "recommended-issue-action"
+
+[[extensions.targeting]]
+module = "./src/ActionExtension.jsx"
+target = "admin.product-details.action.render"
